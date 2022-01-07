@@ -7,41 +7,41 @@ st_crs(ref_grid) <- st_crs(4326)
 lai_djf <- stars::read_stars("../data_general/proc_oz_npv/lai_djf_2016_2019.tif") %>% 
   st_set_dimensions(., 3, values=2016:2019,names='year') %>% 
   set_names('lai') %>% 
-  st_warp(., ref_grid,use_gdal = F) %>% 
-  as.data.table() %>% 
+  # st_warp(., ref_grid,use_gdal = F) %>% 
+  as.data.table() %>%
   .[,`:=`(season='DJF')] %>% 
   .[is.na(lai)==F]
 lai_mam <- stars::read_stars("../data_general/proc_oz_npv/lai_mam_2016_2019.tif") %>% 
   st_set_dimensions(., 3, values=2016:2019,names='year') %>% 
   set_names('lai') %>% 
-  st_warp(., ref_grid,use_gdal = F) %>% 
-  as.data.table() %>% 
+  # st_warp(., ref_grid,use_gdal = F) %>% 
+  as.data.table() %>%
   .[,`:=`(season='MAM')] %>% 
   .[is.na(lai)==F]
 lai_jja <- stars::read_stars("../data_general/proc_oz_npv/lai_jja_2016_2019.tif") %>% 
   st_set_dimensions(., 3, values=2016:2019,names='year') %>% 
   set_names('lai') %>% 
-  st_warp(., ref_grid,use_gdal = F) %>% 
+  # st_warp(., ref_grid,use_gdal = F) %>% 
   as.data.table() %>% 
   .[,`:=`(season='JJA')] %>% 
   .[is.na(lai)==F]
 lai_son <- stars::read_stars("../data_general/proc_oz_npv/lai_son_2016_2019.tif") %>% 
   st_set_dimensions(., 3, values=2016:2019,names='year') %>% 
   set_names('lai') %>% 
-  st_warp(., ref_grid,use_gdal = F) %>% 
+  # st_warp(., ref_grid,use_gdal = F) %>% 
   as.data.table() %>% 
   .[,`:=`(season='SON')] %>% 
   .[is.na(lai)==F]
 
 lai_ma <- stars::read_stars("../data_general/proc_oz_npv/lai_mean_2005_2015.tif") %>% 
   set_names('lai_ma') %>% 
-  st_warp(., ref_grid,use_gdal = F) %>% 
+  # st_warp(., ref_grid,use_gdal = F) %>% 
   as.data.table() %>% 
   .[is.na(lai_ma)==F]
 
 lai_sd <- stars::read_stars("../data_general/proc_oz_npv/lai_sd_2005_2015.tif") %>% 
   set_names('lai_sd') %>% 
-  st_warp(., ref_grid,use_gdal = F) %>% 
+  # st_warp(., ref_grid,use_gdal = F) %>% 
   as.data.table() %>% 
   .[is.na(lai_sd)==F]
 
@@ -64,15 +64,26 @@ svod <- dvod[,.(vod = mean(value,na.rm=T)),
   by=.(x,y,year,season)]
 # setnames(svod,c("x","y"),c("x_vod","y_vod"))
 
-
-
 # merge -------------------------------------------------------------------
-dlai[,`:=`(x = round(x*20)/20, 
-  y=round(y*20)/20)]
-svod[,`:=`(x = round(x*20)/20, 
-  y=round(y*20)/20)]
-unique(dlai$x) %in% unique(svod$x) %>% table
-unique(dlai$y) %in% unique(svod$y) %>% table
+# dlai[,`:=`(x = round(x*20)/20,
+#   y=round(y*20)/20)]
+# svod[,`:=`(x = round(x*20)/20, 
+#   y=round(y*20)/20)]
+# unique(dlai$x) %in% unique(svod$x) %>% table
+# unique(dlai$y) %in% unique(svod$y) %>% table
+cvod <- unique(svod[,.(x,y)])
+clai <- unique(lai_djf[,.(x,y)])
+
+codex <- nn_dts(clai,cvod)
+codex <- rename(codex,x=x_big,y=y_big,x_vod=x_small,y_vod=y_small)
+dlai <- merge(dlai,tmp,by=c('x','y'),allow.cartesian = T)
+
+svod <- rename(svod,x_vod=x,y_vod=y)
+
+d2 <- merge(dlai,svod, by=c("x_vod","y_vod","year","season"))
+d2$lai %>% unique
+
+
 d2 <- merge(dlai,svod,by=c("x","y","year","season"))
 
 norms <- d2[,.(vod_u = mean(vod,na.rm=T),
@@ -99,6 +110,11 @@ d2[,`:=`(m = case_when(
 
 
 # scratch -----------------------------------------------------------------
+d2[sample(.N,10000)] %>% 
+  ggplot(data=.,aes(vod,lai))+
+  geom_smooth()
+
+
 kop <- stars::read_stars("../data_general/Koppen_climate/Beck_KG_V1_present_0p083.tif")
 kop %>% plot
 kop <- arrow::read_parquet('../data_general/Koppen_climate/BOM_Koppen_simplified7.parquet') %>% 

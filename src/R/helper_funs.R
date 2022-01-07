@@ -1,9 +1,19 @@
 
+#' Match nearest xy coordinates between two data.tables
+#'
+#' @param dbig larger data.table 
+#' @param dsmall smaller data.table
+#'
+#' @return
+#' @export
+#'
+#' @examples
 nn_dts <- function(dbig,dsmall){
+  
   dbig_c <- unique(dbig[,.(x,y)])
   dsmall_c <- unique(dsmall[,.(x,y)])
-  dbig_c$idx_nn <- nrow(dbig_c)
-  dsmall_c$idx_nn <- nrow(dsmall_c)
+  dbig_c$idx_nn <- 1:nrow(dbig_c)
+  dsmall_c$idx_nn <- 1:nrow(dsmall_c)
   
   # returns idx of left dt for right dt
   nn <- RANN::nn2(dsmall_c[,.(x,y)], dbig_c[,.(x,y)])
